@@ -4,10 +4,26 @@ namespace fksTemplate\NavBar;
 
 class BootstrapNavBar {
 
+    /**
+     * @var array
+     */
     private $data = [];
+    /**
+     * @var string
+     */
+    private $brand = null;
+    /**
+     * @var string
+     */
     private $html = '';
+    /**
+     * @var string
+     */
     private $className;
-    private $id;
+    /**
+     * @var string
+     */
+    public $id;
 
     const USER_TOOLS_CONTAINER = 'div class="tools"';
 
@@ -15,15 +31,25 @@ class BootstrapNavBar {
         $this->id = $id;
     }
 
-    public function setClassName($className) {
+    /**
+     * @param $className string
+     * @return self
+     */
+    public function setClassName(string $className): self {
         $this->className = $className;
+        return $this;
     }
 
-    public function addTools($class = '', $allowLoggedInOnly = false) {
+    /**
+     * @param string $class
+     * @param bool $allowLoggedInOnly
+     * @return self
+     */
+    public function addTools(string $class = '', bool $allowLoggedInOnly = false): self {
         global $INFO;
         global $lang;
         if ($allowLoggedInOnly && !$INFO['userinfo']['name']) {
-            return;
+            return $this;
         }
         $data = [];
         $data[] = new NavBarItem([
@@ -45,94 +71,139 @@ class BootstrapNavBar {
             'class' => 'nav ' . $class,
             'data' => $data,
         ];
+        return $this;
     }
 
-    public function mainMenu() {
+    /**
+     * @param string $href
+     * @param string $text
+     * @param string $imageSrc
+     * @return self
+     */
+    public function addBrand($href = '', $text = null, $imageSrc = null): self {
+        $html = '<a class="navbar-brand" href="' . wl(cleanID($href)) . '">';
+        if ($imageSrc) {
+            $html .= '<img src="' . DOKU_TPL . $imageSrc .
+                '" width="30" height="30" class="d-inline-block align-top" alt="">';
+        }
+        if ($text) {
+            $html .= $text;
+        }
+        $html .= '</a>';
+        $this->brand = $html;
+        return $this;
+    }
 
-        $this->html .= '
-    <nav class="navbar navbar-toggleable-md ' . $this->className . '">
-    <!-- Brand and toggle get grouped for better mobile display -->';
-
-        $this->html .= '        
-    <button 
-    class="navbar-toggler" 
-    type="button" 
-    data-toggle="collapse" 
-    data-target="#mainNavbar' . $this->id . '" 
+    /**
+     * @return string
+     */
+    public function getToggler(): string {
+        return '        
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="' . '#mainNavbar' . $this->id . '" 
     aria-controls="navbarSupportedContent" 
     aria-expanded="false" 
-    aria-label="Toggle navigation">
-    
-    <span class="navbar-toggler-icon"></span>
-  </button>   
-         <div class="collapse navbar-collapse" id="mainNavbar' . $this->id . '">
-      ';
+    aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span>';
+    }
+
+    /**
+     * @param bool $renderToggler
+     * @return self
+     */
+    public function mainMenu(bool $renderToggler = true): self {
+        $this->html .= '<nav class="navbar navbar-toggleable-md ' . $this->className . '">';
+        if ($this->brand) {
+            $this->html .= $this->brand;
+        }
+
+        if ($renderToggler) {
+            $this->html .= $this->getToggler();
+        }
+
+        $this->html .= '</button>   
+         <div class="collapse navbar-collapse" id="mainNavbar' . $this->id . '">';
         foreach ($this->data as $item) {
             $this->renderNavBar($item['data'], $item['class']);
         }
+        $this->html .= '</div>';
         $this->html .= '</nav>';
+        return $this;
     }
 
-
-    public function render() {
-        $this->mainMenu();
+    /**
+     * @param bool $renderToggler
+     * @return string
+     */
+    public function render(bool $renderToggler = true): string {
+        $this->mainMenu($renderToggler);
         echo $this->html;
-
+        return $this;
     }
 
-    private function parseMenuFile($filename) {
+    /**
+     * @param $filename string
+     * @return NavBarItem[]
+     */
+    private function parseMenuFile(string $filename): array {
         $filePath = wikiFN($filename);
         $data = [];
         if (file_exists($filePath)) {
-// read only lines formatted as wiki lists
             $lines = array_filter(file($filePath),
                 function ($line) {
                     return preg_match('/^\s+\*/', $line);
                 });
 
             $numLines = count($lines);
-// Array is read back to forth so pages with children can be found easier
-// you do not have to go back in the array if a child entry is found
             for ($i = 0; $i < $numLines; $i++) {
                 if (!$lines[$i]) {
                     continue;
                 }
-                list ($prefix, $content) = explode('*', $lines[$i]);
+                list ($prefix, $content) = explode('*', $lines[$i], 2);
                 $level = (int)strlen($prefix) / 2;
                 $level = ($level > 2) ? 2 : $level;
 
-                if (!preg_match('/\s*\[\[[^\]]+\]\]/', $content)) {
+                if (!preg_match('/\s*(\*\*)?\[\[[^\]]+\]\](\*\*)?/', $content)) {
                     continue;
                 }
-                $content = str_replace([']', '['], '', trim($content));
+                $important = (bool)preg_match('/(\*\*).*(\*\*)/', $content);
+                $content = str_replace([']', '[', '**'], '', trim($content));
                 list($id, $content, $icon) = explode('|', $content);
-                $item = new NavBarItem([
+                $data[] = new NavBarItem([
                     'id' => $id,
                     'icon' => $icon,
                     'level' => $level,
-                    'content' => $content
+                    'content' => $content,
+                    'important' => $important
                 ]);
-                $data[] = $item;
             }
         }
         return $data;
     }
 
-    public function addMenuText($file = 'menu', $class = '') {
+    /**
+     * @param string $file
+     * @param string $class
+     * @return self
+     */
+    public function addMenuText(string $file = 'menu', string $class = ''): self {
         global $conf;
         $pageLang = $conf['lang'];
-        $menuFileName = 'system/' . $file . '_' . $pageLang;
+        $menuFileName = 'system:' . $file . '_' . $pageLang;
 
         $this->data[] = [
             'class' => 'nav ' . $class,
             'data' => $this->parseMenuFile($menuFileName),
         ];
+        return $this;
     }
 
-    public function addLangSelect($class = '') {
+    /**
+     * @param string $class
+     * @return self
+     */
+    public function addLangSelect(string $class = ''): self {
         global $conf;
         $data = [];
-        if (count($conf['available_lang']) == 0) return;
+        if (count($conf['available_lang']) == 0) return $this;
         $data[] = new NavBarItem([
             'id' => null,
             'level' => 1,
@@ -140,15 +211,14 @@ class BootstrapNavBar {
         ]);
 
         foreach ($conf['available_lang'] as $currentLang) {
-
             $data[] = new NavBarItem([
                 'id' => null,
                 'level' => 2,
                 'content' => '<a 
-                href="' . $currentLang['content']['url'] . '" 
+                href="' . $currentLang['content']['url'] . '"  
                 class="dropdown-item ' . $currentLang['content']['class'] . ' ' .
                     ($currentLang['code'] == $conf['lang'] ? 'active' : '') . '"
-                ' . $currentLang['content']['more'] . '
+                ' . $currentLang['content']['more'] . ' 
                 >' . $currentLang['content']['text'] . ' </a> '
             ]);
         }
@@ -156,10 +226,37 @@ class BootstrapNavBar {
             'class' => 'nav ' . $class,
             'data' => $data,
         ];
-
+        return $this;
     }
 
-    private function getUserTools() {
+    /**
+     * Simple version of previous function
+     * @param string $class
+     * @return self
+     */
+    public function addLangToggle(string $class = ''): self {
+        global $conf;
+        $data = [];
+        if (count($conf['available_lang']) == 0) return $this;
+
+        foreach ($conf['available_lang'] as $currentLang) {
+            $data[] = new NavBarItem([
+                'id' => null,
+                'level' => 1,
+                'content' => '<a href="' . $currentLang['content']['url'] . '" class="nav-item nav-link">' . $currentLang['content']['text'] . '</a>'
+            ]);
+        }
+        $this->data[] = [
+            'class' => 'nav ' . $class,
+            'data' => $data,
+        ];
+        return $this;
+    }
+
+    /**
+     * @return NavBarItem[]
+     */
+    private function getUserTools(): array {
         global $lang;
         $data = [];
         $data[] = new NavBarItem([
@@ -194,7 +291,10 @@ class BootstrapNavBar {
         return $data;
     }
 
-    private function getSiteTools() {
+    /**
+     * @return NavBarItem[]
+     */
+    private function getSiteTools(): array {
         global $lang;
         $data = [];
         $data[] = new NavBarItem([
@@ -235,7 +335,10 @@ class BootstrapNavBar {
         return $data;
     }
 
-    private function getPageTools() {
+    /**
+     * @return NavBarItem[]
+     */
+    private function getPageTools(): array {
         global $lang;
         $data = [];
         $data[] = new NavBarItem([
@@ -270,19 +373,21 @@ class BootstrapNavBar {
         return $data;
     }
 
-    public function renderNavBar($data, $class = '') {
+    /**
+     * @param $data NavBarItem[]
+     * @param string $class
+     * @return void
+     */
+    private function renderNavBar(array $data, string $class = '') {
         $inLI = false;
         $inUL = false;
 
         $this->html .= ' <div class="nav navbar-nav ' . $class . '" > ';
 
-        /**
-         * @var $item NavBarItem
-         * @var $data NavBarItem[]
-         */
         foreach ($data as $k => $item) {
 
             $link = $item->getLink();
+            $important = $item->isImportant();
             $title = $item->getIcon() . $item->getContent();
             if ($item->getLevel() == 1) {
                 if ($inUL) {
@@ -300,7 +405,7 @@ class BootstrapNavBar {
                         '" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >' .
                         $title . '<span class="caret"></span></a>';
                 } else {
-                    $this->html .= '<a class="nav-item nav-link" href="' . $link . '">' . $title . '</a>';
+                    $this->html .= '<a class="nav-item nav-link' . ($important ? ' nav-important' : null) . '" href="' . $link . '">' . $title . '</a>';
                 }
             } elseif ($item->getLevel() == 2) {
                 if (!$inUL) {
