@@ -131,9 +131,9 @@ class BootstrapNavBar {
 
     /**
      * @param bool $renderToggler
-     * @return string
+     * @return self
      */
-    public function render(bool $renderToggler = true): string {
+    public function render(bool $renderToggler = true): self {
         $this->mainMenu($renderToggler);
         echo $this->html;
         return $this;
