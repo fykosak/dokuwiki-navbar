@@ -80,11 +80,13 @@ class BootstrapNavBar {
      * @param string $imageSrc
      * @return self
      */
-    public function addBrand($href = '', $text = null, $imageSrc = null): self {
+    public function addBrand($href = '', $text = null, $imageSrc = null, $imageWidth = '30', $imageHeight = '30'): self {
         $html = '<a class="navbar-brand" href="' . wl(cleanID($href)) . '">';
         if ($imageSrc) {
             $html .= '<img src="' . DOKU_TPL . $imageSrc .
-                '" width="30" height="30" class="d-inline-block align-top" alt="">';
+                '" width="' . $imageWidth . 
+				'"height="' . $imageHeight . 
+				'"class="d-inline-block align-top" alt="">';
         }
         if ($text) {
             $html .= $text;
