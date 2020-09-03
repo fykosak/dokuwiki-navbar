@@ -1,96 +1,52 @@
 <?php
 
-namespace fksTemplate\NavBar;
+namespace FYKOS\dokuwiki\template\NavBar;
 
 class NavBarItem {
-    /**
-     * @var string
-     */
-    private $id;
-    /**
-     * @var string
-     */
-    private $icon;
-    /**
-     * @var integer
-     */
-    private $level;
-    /**
-     * @var string
-     */
-    private $content;
-    /**
-     * @var boolean
-     */
-    private $important;
 
-    public function __construct(array $parameters) {
-        $this->id = $parameters['id'];
-        $this->icon = $parameters['icon'];
-        $this->level = $parameters['level'];
-        $this->content = $parameters['content'];
-        $this->important = $parameters['important'];
+    private ?string $pageId;
+    private ?string $icon;
+    private int $level;
+    private ?string $content;
+
+    public function __construct(?string $pageId, ?string $content, int $level, ?string $icon) {
+        $this->pageId = $pageId;
+        $this->icon = $icon;
+        $this->level = $level;
+        $this->content = $content;
     }
 
-    /**
-     * @return string
-     */
-    public function getId() {
-        return $this->id;
+    public function getId(): ?string {
+        return $this->pageId;
     }
 
-    /**
-     * @return string
-     */
     public function getIcon(): string {
-        if ($this->icon) {
+        if (isset($this->icon)) {
             return ' <span class="' . $this->icon . '" ></span > ';
         }
         return '';
     }
 
-    /**
-     * @return bool
-     */
     private function isExternal(): bool {
-        return preg_match('#https?://#', $this->id);
+        return preg_match('#https?://#', $this->pageId);
     }
 
-    /**
-     * @return integer
-     */
     public function getLevel(): int {
         return $this->level;
     }
 
-    /**
-     * @return string
-     */
-    public function getContent(): string {
+    public function getContent(): ?string {
         return $this->content;
     }
 
-    /**
-     * @return string
-     */
     public function getLink(): string {
         if ($this->isExternal()) {
-            return htmlspecialchars($this->id);
+            return htmlspecialchars($this->pageId);
         }
-        return wl(cleanID($this->id));
+        return wl(cleanID($this->pageId));
     }
 
-    /**
-     * @return bool
-     */
-    public function isImportant(): bool {
-        return (bool)$this->important;
-    }
-
-    /**
-     * @return bool
-     */
     public function hasId(): bool {
-        return !is_null($this->id);
+        return !is_null($this->pageId);
     }
 }
